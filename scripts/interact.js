@@ -2,13 +2,15 @@
 const hre = require("hardhat");
 const fs = require("fs");
 const { ethers } = require("hardhat");
-const annualInterestRate = 0.1; //percentage per year, e.g. 0.1 for 10%
-const secondsPerYear = 60*60*24*365.25;
-const effectiveRatePerSecond = (1+annualInterestRate)**(1/secondsPerYear);
-const rateInRay = 10**27 + effectiveRatePerSecond*10**27
+const principal = 1000000000;
+const principalAsString = principal.toString();
+const annualInterestRate = 0.1; //percentage per year, e.g. 0.1 for 10% compounding annually
+const secondsPerYear = 60*60*24*365;
+const effectiveRatePerSecond = (1+annualInterestRate)**(1/secondsPerYear); //effective rate per second, compouding per second
+const rateInRay = effectiveRatePerSecond*10**27;
 
 console.log("effectiveRatePerSecond:", effectiveRatePerSecond);
-console.log("rateInRay:", rateInRay);
+console.log("rateInRay:", rateInRay, typeof rateInRay);
 
 async function main() {
   let balance, contractAddress, interest;
@@ -42,30 +44,29 @@ async function main() {
   console.log("Name:", await EURDC.name());
   console.log("Contract address:", EURDC.address);
 
-  let tx = await EURDC.issue(signerOne.address, (ethers.BigNumber.from((10**18).toString())));
+  let tx = await EURDC.setInterestRate(ethers.BigNumber.from(rateInRay.toLocaleString('fullwide', {useGrouping:false})));
+  await tx.wait();
+
+  tx = await EURDC.issue(signerOne.address, (ethers.utils.parseUnits(principalAsString, 18)));
   await tx.wait();
 
   balanceSignerOne = await EURDC.balanceOf(signerOne.address);
   // balanceSignerTwo = await EURDC.balanceOf(signerTwo.address);
   console.log("Balance of signerOne:", ethers.utils.formatUnits(balanceSignerOne, 18));
-  // console.log("Balance of signerTwo:", balanceSignerTwo);
 
-  // tx = await EURDC.calculateInterest(signerOne.address);
-  // await tx.wait();
-
-  interest = await EURDC.callStatic.calculateInterest(signerOne.address);
-  console.log("Logging interest:", ethers.utils.formatUnits(interest, 18));
+  interest = await EURDC.callStatic.updateInterest(signerOne.address);
+  console.log("Logging interest:", ethers.utils.formatUnits(interest, 27));
 
   // tx = await EURDC.addInterestToBalance(signerOne.address);
   // await tx.wait();
   // balance = await EURDC.balanceOf(signerOne.address)
-  // console.log("Logging balance signerOne after adding interest to balance:", ethers.utils.formatUnits(balance, 18));
+  // console.log("Logging balance signerOne after adding interest to balance:", ethers.utils.formatUnits(balance, 27));
 
   const intervalOne = setInterval(async() => {
-    interest = await EURDC.callStatic.calculateInterest(signerOne.address);
-    console.log("Logging interest in setInterval:", ethers.utils.formatUnits(interest, 18));
-    if (++counter > 10) clearInterval(intervalOne);
-  }, 10000);
+    interest = await EURDC.callStatic.updateInterest(signerOne.address);
+    console.log("Logging interest in setInterval:", ethers.utils.formatUnits(interest, 27));
+    if (++counter > 5) clearInterval(intervalOne);
+  }, 15000);
 
   // tx = await EURDC.transfer(signerTwo.address, balanceSignerOne)
   // await tx.wait();

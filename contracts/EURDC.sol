@@ -7,14 +7,12 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "../lib/DSMath.sol";
 
-contract EURDC is ERC20, ERC20Burnable {
+contract EURDC is ERC20, ERC20Burnable, DSMath {
     uint public rateInRay;
     mapping(address => uint) public interest;
     mapping(address => uint) public lastTimestamp;
 
-    constructor(uint _rateInRay, uint _compoundPeriod)
-        ERC20("EURO Deposit Coin", "EURDC")
-    {
+    constructor(uint _rateInRay) ERC20("EURO Deposit Coin", "EURDC") {
         rateInRay = _rateInRay;
     }
 
@@ -34,12 +32,9 @@ contract EURDC is ERC20, ERC20Burnable {
         return a * b * z + a * d + b * c + (b * d) / z;
     }
 
-    function setInterestRate(uint _rateInRay)
-        public
-        payable
-        returns (bool)
-    {
+    function setInterestRate(uint _rateInRay) public payable returns (bool) {
         rateInRay = _rateInRay;
+        console.log("rateInRay:", rateInRay);
         return true;
     }
 
@@ -53,15 +48,17 @@ contract EURDC is ERC20, ERC20Burnable {
         if (lastTimestamp[depositor] == 0) {
             lastTimestamp[depositor] = block.timestamp;
         }
-        uint timeLapsed = block.timestamp - lastTimestamp[depositor];
-        interest[depositor] = mulDiv((rateInRay *timeLapsed), balanceOf(depositor),(yearInSeconds*100));
-        console.log("Block number:", block.number);
-        console.log("Block timestamp:", block.timestamp);
+        uint timeLapsed = sub(block.timestamp, lastTimestamp[depositor]);
+        uint principal = balanceOf(depositor);
+        uint principalInRay = mul(principal, 10**9);
+        uint interestFactor = rpow(rateInRay, timeLapsed);
+        uint principalPlusInterest = rmul(principalInRay, interestFactor);
+        interest[depositor] = sub(principalPlusInterest, principalInRay);
         console.log("Timelapsed:", timeLapsed);
-        console.log(
-            "interest[depositor]:",
-            interest[depositor]
-        );
+        console.log("Principal:", principal);
+        console.log("principalInRay:", principalInRay);
+        console.log("principalPlusInterest:", principalPlusInterest);
+        console.log("interest[depositor]:", interest[depositor]);
         return interest[depositor];
     }
 

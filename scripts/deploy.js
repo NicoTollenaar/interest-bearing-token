@@ -1,7 +1,6 @@
 const fs = require("fs");
 const hre = require("hardhat");
 const annualInterestRate = 100;
-const compoundPeriod = 60; // in seconds
 
 async function main() {
   let balance;
@@ -11,7 +10,7 @@ async function main() {
   balance = await signerOne.getBalance();
   console.log("ETH balance signerOne:", ethers.utils.formatUnits(balance, 18));
   const Factory = await hre.ethers.getContractFactory("EURDC");
-  const EURDC = await Factory.deploy(annualInterestRate, compoundPeriod);
+  const EURDC = await Factory.deploy(0);
   await EURDC.deployed();
 
   console.log("EURDC address:", EURDC.address);
