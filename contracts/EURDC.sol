@@ -33,22 +33,35 @@ contract EURDC is ERC20, ERC20Burnable, DSMath {
     }
 
     function setInterestRate(uint _rateInRay) public payable returns (bool) {
+        // still to do: update and add interest across all tokenholders
         rateInRay = _rateInRay;
         console.log("rateInRay:", rateInRay);
         return true;
     }
 
     function issue(address recipient, uint amount) public {
-        updateInterest(recipient);
+        updateInterest(recipient, block.timestamp);
         addInterestToBalance(recipient);
         _mint(recipient, amount);
     }
 
-    function updateInterest(address depositor) public returns (uint) {
+    function updateInterest(address depositor, uint currentTimestamp)
+        public
+        returns (uint)
+    {
+        uint timeLapsed;
         if (lastTimestamp[depositor] == 0) {
             lastTimestamp[depositor] = block.timestamp;
         }
-        uint timeLapsed = sub(block.timestamp, lastTimestamp[depositor]);
+        console.log("currentTimstamp:", currentTimestamp);
+        console.log("block.timestamp:", block.timestamp);
+        console.log("lastTimestamp[depositor]:", lastTimestamp[depositor]);
+        if (currentTimestamp < lastTimestamp[depositor]) {
+            timeLapsed = 0;
+        } else {
+            timeLapsed = sub(currentTimestamp, lastTimestamp[depositor]);
+        }
+        // uint timeLapsed = sub(block.timestamp, lastTimestamp[depositor]);
         uint principal = balanceOf(depositor);
         uint principalInRay = mul(principal, 10**9);
         uint interestFactor = rpow(rateInRay, timeLapsed);
@@ -72,16 +85,18 @@ contract EURDC is ERC20, ERC20Burnable, DSMath {
         override
         returns (bool)
     {
-        updateInterest(msg.sender);
+        // still to do: include and update array of tokenholders
+        // (add new recipient and remove existing tokenholder if balance becomes zero)
+        updateInterest(msg.sender, block.timestamp);
         addInterestToBalance(msg.sender);
-        updateInterest(to);
+        updateInterest(to, block.timestamp);
         addInterestToBalance(to);
         super.transfer(to, amount);
         return true;
     }
 
     function addInterestToBalance(address depositor) public payable {
-        updateInterest(depositor);
+        updateInterest(depositor, block.timestamp);
         _balances[depositor] += interest[depositor];
         interest[depositor] = 0;
         lastTimestamp[depositor] = block.timestamp;

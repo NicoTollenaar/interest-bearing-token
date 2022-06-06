@@ -1,6 +1,5 @@
 const fs = require("fs");
 const hre = require("hardhat");
-const annualInterestRate = 100;
 
 async function main() {
   let balance;
@@ -8,7 +7,10 @@ async function main() {
   console.log("accounts:", accounts);
   const signerOne = hre.ethers.provider.getSigner(accounts[0]);
   balance = await signerOne.getBalance();
-  console.log("ETH balance signerOne:", ethers.utils.formatUnits(balance, 18));
+  console.log(
+    "ETH balance signerOne:",
+    hre.ethers.utils.formatUnits(balance, 18)
+  );
   const Factory = await hre.ethers.getContractFactory("EURDC");
   const EURDC = await Factory.deploy(0);
   await EURDC.deployed();
@@ -17,10 +19,10 @@ async function main() {
   const deployerAddress = EURDC.signer.address;
   console.log("Address deployer:", deployerAddress);
 
-  const contractAddressJSON = fs.readFileSync("./scripts/contractAddress.json", "utf8");
+  const contractAddressJSON = fs.readFileSync("./src/constants.json", "utf8");
   let contractAddress = {};
   if (contractAddressJSON) contractAddress = JSON.parse(contractAddressJSON);
-  
+
   const { chainId } = await EURDC.provider.getNetwork();
 
   switch (chainId) {
@@ -40,7 +42,7 @@ async function main() {
   console.log("logging contractAddress:", contractAddress);
 
   try {
-    fs.writeFileSync('./scripts/contractAddress.json', JSON.stringify(contractAddress));
+    fs.writeFileSync("./src/constants.json", JSON.stringify(contractAddress));
   } catch (err) {
     console.log(err);
   }

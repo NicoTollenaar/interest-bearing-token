@@ -1,21 +1,21 @@
-
 const hre = require("hardhat");
 const fs = require("fs");
 const { ethers } = require("hardhat");
-const principal = 1000000000;
+const principal = 1000;
 const principalAsString = principal.toString();
 const annualInterestRate = 0.1; //percentage per year, e.g. 0.1 for 10% compounding annually
-const secondsPerYear = 60*60*24*365;
-const effectiveRatePerSecond = (1+annualInterestRate)**(1/secondsPerYear); //effective rate per second, compouding per second
-const rateInRay = effectiveRatePerSecond*10**27;
+const secondsPerYear = 60 * 60 * 24 * 365;
+const effectiveRatePerSecond = (1 + annualInterestRate) ** (1 / secondsPerYear); //effective rate per second, compouding per second
+const rateInRay = effectiveRatePerSecond * 10 ** 27;
+console.log("Math.floor(Date.now()/1000):", Math.floor(Date.now() / 1000));
 
 console.log("effectiveRatePerSecond:", effectiveRatePerSecond);
 console.log("rateInRay:", rateInRay, typeof rateInRay);
 
 async function main() {
-  let balance, contractAddress, interest;
+  let contractAddress, interest;
   let counter = 0;
-  const contractAddressJSON = fs.readFileSync("./scripts/contractAddress.json", "utf8");
+  const contractAddressJSON = fs.readFileSync("./src/constants.json", "utf8");
   const contractAddressObject = JSON.parse(contractAddressJSON);
   console.log("Logging contractAddressObject:", contractAddressObject);
 
@@ -40,21 +40,38 @@ async function main() {
       console.log("Something went wrong in switch block");
   }
 
-  const EURDC = await hre.ethers.getContractAt("EURDC", contractAddress, signerOne);
+  const EURDC = await hre.ethers.getContractAt(
+    "EURDC",
+    contractAddress,
+    signerOne
+  );
   console.log("Name:", await EURDC.name());
   console.log("Contract address:", EURDC.address);
 
-  let tx = await EURDC.setInterestRate(ethers.BigNumber.from(rateInRay.toLocaleString('fullwide', {useGrouping:false})));
+  let tx = await EURDC.setInterestRate(
+    ethers.BigNumber.from(
+      rateInRay.toLocaleString("fullwide", { useGrouping: false })
+    )
+  );
   await tx.wait();
 
-  tx = await EURDC.issue(signerOne.address, (ethers.utils.parseUnits(principalAsString, 18)));
+  tx = await EURDC.issue(
+    signerOne.address,
+    ethers.utils.parseUnits(principalAsString, 18)
+  );
   await tx.wait();
 
-  balanceSignerOne = await EURDC.balanceOf(signerOne.address);
+  const balanceSignerOne = await EURDC.balanceOf(signerOne.address);
   // balanceSignerTwo = await EURDC.balanceOf(signerTwo.address);
-  console.log("Balance of signerOne:", ethers.utils.formatUnits(balanceSignerOne, 18));
+  console.log(
+    "Balance of signerOne:",
+    ethers.utils.formatUnits(balanceSignerOne, 18)
+  );
 
-  interest = await EURDC.callStatic.updateInterest(signerOne.address);
+  interest = await EURDC.callStatic.updateInterest(
+    signerOne.address,
+    Math.floor(Date.now() / 1000)
+  );
   console.log("Logging interest:", ethers.utils.formatUnits(interest, 27));
 
   // tx = await EURDC.addInterestToBalance(signerOne.address);
@@ -62,11 +79,17 @@ async function main() {
   // balance = await EURDC.balanceOf(signerOne.address)
   // console.log("Logging balance signerOne after adding interest to balance:", ethers.utils.formatUnits(balance, 27));
 
-  const intervalOne = setInterval(async() => {
-    interest = await EURDC.callStatic.updateInterest(signerOne.address);
-    console.log("Logging interest in setInterval:", ethers.utils.formatUnits(interest, 27));
-    if (++counter > 5) clearInterval(intervalOne);
-  }, 15000);
+  const intervalOne = setInterval(async () => {
+    interest = await EURDC.callStatic.updateInterest(
+      signerOne.address,
+      Math.floor(Date.now() / 1000)
+    );
+    console.log(
+      "Logging interest in setInterval:",
+      ethers.utils.formatUnits(interest, 27)
+    );
+    if (++counter > 10) clearInterval(intervalOne);
+  }, 1000);
 
   // tx = await EURDC.transfer(signerTwo.address, balanceSignerOne)
   // await tx.wait();
@@ -75,7 +98,6 @@ async function main() {
   // balanceSignerTwo = await EURDC.balanceOf(signerTwo.address);
   // console.log("Balance of signerOne:", balanceSignerOne);
   // console.log("Balance of signerTwo:", balanceSignerTwo);
-
 }
 
 main();
