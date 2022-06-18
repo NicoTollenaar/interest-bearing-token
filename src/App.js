@@ -2,6 +2,7 @@ import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Button from "react-bootstrap/Button";
+import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
 import FormControl from "react-bootstrap/FormControl";
 import { useState, useEffect } from "react";
@@ -27,25 +28,7 @@ function App() {
   //   if (typeof window.ethereum !== "undefined") {
   //     window.ethereum.on("accountsChanged", (accounts) => {
   //       setSignerAddress(accounts[0]);
-  //       console.log(
-  //         "In changedAccount OUTSIDE forbidden if block, logging accounts, accounts[0], addresses, and indexOf:",
-  //         accounts,
-  //         accounts[0],
-  //         addresses,
-  //         addresses.indexOf(accounts[0])
-  //       );
-  //       console.log(
-  //         "Just before forbidden if in changeaccount block, logging addresses:",
-  //         addresses
-  //       );
   //       if (addresses.indexOf(accounts[0]) === -1) {
-  //         console.log(
-  //           "In changedAccount IN forbidden if block, logging accounts, accounts[0], addresses, and indexOf:",
-  //           accounts,
-  //           accounts[0],
-  //           addresses,
-  //           addresses.indexOf(accounts[0])
-  //         );
   //         setAddresses((addresses) => addresses.concat(accounts[0]));
   //       }
   //     });
@@ -58,13 +41,25 @@ function App() {
   // }, [addresses]);
 
   useEffect(() => {
+    let intervalIds = [];
     if (typeof window.ethereum !== "undefined") {
-      getBalancesAndInterestAmounts().catch((err) =>
-        console.log("Logging err in catch block after getbalances:", err)
-      );
+      getBalancesAndInterestAmounts()
+        .then((response) => {
+          console.log("response:", response);
+          intervalIds = response;
+          console.log("IntervalIds in .then:", intervalIds);
+        })
+        .catch((err) =>
+          console.log("Logging err in catch block after getbalances:", err)
+        );
     } else {
       console.log("Install MetaMask");
     }
+    console.log("IntervalIds at end of useEffect:", intervalIds);
+    return () => {
+      console.log("CLEANUP FUNCTION CALLED");
+      intervalIds?.forEach((id) => clearInterval(id));
+    };
   }, [addresses]);
 
   async function connectMetaMask() {
@@ -73,16 +68,9 @@ function App() {
         method: "eth_requestAccounts",
       });
       if (addresses.indexOf(accounts[0]) === -1) {
-        console.log(
-          "In connectMetaMask in forbidden if block, logging accounts[0] and addresses, and indexOf:",
-          accounts[0],
-          addresses,
-          addresses.indexOf(accounts[0])
-        );
         setAddresses((addresses) => addresses.concat(accounts[0]));
       }
       setSignerAddress(accounts[0]);
-      console.log("In connectMetaMask, logging accounts[0]:", accounts[0]);
       console.log("In connectMetaMask, loggingaddresses:", addresses);
     } catch (error) {
       console.log("Error in connectMetaMask, logging error: ", error);
@@ -91,13 +79,11 @@ function App() {
 
   async function getBalancesAndInterestAmounts() {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
-    console.log("In getBalances, logging provider:", provider);
     const signer = provider.getSigner();
-    console.log("In getBalances, logging signer:", signer);
     const EURDC = new ethers.Contract(contractAddress, abi, provider);
-    console.log("EURDC:", EURDC);
     let amount, interimInterest;
-    console.log("Getbalances called, logging addresses:", addresses);
+    console.log("In getbalances, logging addresses:", addresses);
+    let intervalIds = [];
     addresses.forEach(async (address, index) => {
       amount = await EURDC.balanceOf(address);
       setBalances((balances) => {
@@ -105,15 +91,10 @@ function App() {
         copy[index] = ethers.utils.formatUnits(amount, 18);
         return copy;
       });
-      console.log(`balances[]:`, ethers.utils.formatUnits(amount, 18));
-      setInterval(async () => {
+      intervalIds[index] = setInterval(async () => {
         interimInterest = await EURDC.callStatic.updateInterest(
           address,
           Math.floor(Date.now() / 1000)
-        );
-        console.log(
-          "interimInterest[]:",
-          ethers.utils.formatUnits(interimInterest, 27)
         );
         setInterestAmounts((interestAmounts) => {
           let copy = [...interestAmounts];
@@ -122,16 +103,48 @@ function App() {
         });
       }, 1000);
     });
+    console.log("intervalIds:", intervalIds);
+    return intervalIds;
   }
 
   function handleClick(e) {
     const newAddress = document.getElementById("inputfield").value;
-    console.log("In handleClick, logging newAddress:", newAddress);
-
     if (addresses.indexOf(newAddress) === -1) {
       setAddresses((addresses) => addresses.concat(newAddress));
     }
     console.log("In handlesubmit, logging addresses:", addresses);
+  }
+
+  async function handleTransfer(e) {
+    e.preventDefault();
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    let signer = provider.getSigner();
+    const signerAddress = signer.getAddress();
+    const fromAddress = document.getElementById("transferFrom").value;
+    let newSigner;
+    while (signerAddress !== fromAddress) {
+      alert("connect correct account");
+      [newSigner] = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+      signer = newSigner;
+    }
+    const toAddress = document.getElementById("transferTo").value;
+    const amount = document.getElementById("transferAmount").value;
+    const amountInWad = ethers.utils.parseUnits(amount.toString(), 18);
+    const EURDC = new ethers.Contract(contractAddress, abi, signer);
+    let tx = await EURDC.connect(signer).transfer(toAddress, amountInWad);
+    await tx.wait();
+    const newBalanceSender = await EURDC.balanceOf(fromAddress);
+    const newBalanceRecipient = await EURDC.balanceOf(toAddress);
+    const indexFromAddress = addresses.indexOf(fromAddress);
+    const indexToAddress = addresses.indexOf(toAddress);
+    setBalances((balances) => {
+      const copy = [...balances];
+      copy[indexFromAddress] = ethers.utils.formatUnits(newBalanceSender, 18);
+      copy[indexToAddress] = ethers.utils.formatUnits(newBalanceRecipient, 18);
+      return copy;
+    });
   }
 
   console.log("Outside functions, logging addresses:", addresses);
@@ -163,6 +176,36 @@ function App() {
               // }
             />
           </InputGroup>
+        </Row>
+        <Row>
+          <Col>
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Control
+                  type="text"
+                  placeholder="From address"
+                  id="transferFrom"
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Control
+                  type="text"
+                  placeholder="To address"
+                  id="transferTo"
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Control
+                  type="number"
+                  placeholder="Amount"
+                  id="transferAmount"
+                />
+              </Form.Group>
+              <Button variant="primary" type="submit" onSubmit={handleTransfer}>
+                Transfer
+              </Button>
+            </Form>
+          </Col>
         </Row>
         <Row>
           <Col>
