@@ -21,23 +21,26 @@ module.exports = {
   solidity: "0.8.4",
   defaultNetwork: "hardhat",
   networks: {
-    hardhat: {},
+    hardhat: {
+      allowUnlimitedContractSize: true,
+      blockGasLimit: 12450000,
+    },
     ganache: {
       url: "http://localhost:7545",
       accounts: [
         `0x${process.env.GANANCHE_PRIVATE_KEY_ONE}`,
-        `0x${process.env.GANANCHE_PRIVATE_KEY_TWO}`
+        `0x${process.env.GANANCHE_PRIVATE_KEY_TWO}`,
       ],
     },
-      rinkeby: {
-        url: `${process.env.ALCHEMY_RINKEBY_URL}`,
-        accounts: [
-          `0x${process.env.RINKEBY_PRIVATE_KEY_ONE}`,
-          `0x${process.env.RINKEBY_PRIVATE_KEY_TWO}`
-        ],
-      }
+    rinkeby: {
+      url: `${process.env.ALCHEMY_RINKEBY_URL}`,
+      accounts: [
+        `0x${process.env.RINKEBY_PRIVATE_KEY_ONE}`,
+        `0x${process.env.RINKEBY_PRIVATE_KEY_TWO}`,
+      ],
     },
+  },
   paths: {
-    artifacts: "./src/artifacts"
-  }
+    artifacts: "./src/artifacts",
+  },
 };

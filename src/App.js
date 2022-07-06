@@ -88,7 +88,9 @@ function App() {
       amount = await EURDC.balanceOf(address);
       setBalances((balances) => {
         let copy = [...balances];
-        copy[index] = ethers.utils.formatUnits(amount, 18);
+        if (copy[index]) {
+          ethers.utils.formatUnits(amount, 18);
+        } else copy.push(ethers.utils.formatUnits(amount, 18));
         return copy;
       });
       intervalIds[index] = setInterval(async () => {
