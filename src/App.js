@@ -12,12 +12,21 @@ import contractAddressJSON from "./constants.json";
 import EURDCJSON from "./artifacts/contracts/EURDC.sol/EURDC.json";
 const contractAddress = contractAddressJSON.rinkeby;
 const abi = EURDCJSON.abi;
+const provider = new ethers.providers.Web3Provider(window.ethereum);
+const EURDC = new ethers.Contract(contractAddress, abi, provider);
+
 function App() {
-  const [addresses, setAddresses] = useState([]);
+  const [accounts, setAccounts] = useState([
+    {
+      address: "",
+      balance: 0,
+      interest: 0,
+    },
+  ]);
   const [signerAddress, setSignerAddress] = useState("");
-  const [balances, setBalances] = useState([]);
-  const [interestAmounts, setInterestAmounts] = useState([]);
   const [chainId, setChainId] = useState(0);
+  // const [balances, setBalances] = useState([]);
+  // const [interestAmounts, setInterestAmounts] = useState([]);
 
   useEffect(() => {
     connectMetaMask().catch((err) =>
@@ -25,30 +34,28 @@ function App() {
     );
   }, []);
 
-  // useEffect(() => {
-  //   if (typeof window.ethereum !== "undefined") {
-  //     window.ethereum.on("accountsChanged", (accounts) => {
-  //       setSignerAddress(accounts[0]);
-  //       if (addresses.indexOf(accounts[0]) === -1) {
-  //         setAddresses((addresses) => addresses.concat(accounts[0]));
-  //       }
-  //     });
-  //     window.ethereum.on("chainChanged", (chainId) => {
-  //       setChainId(chainId);
-  //     });
-  //   } else {
-  //     alert("Install MetaMask");
-  //   }
-  // }, [addresses]);
+  useEffect(() => {
+    if (typeof window.ethereum !== "undefined") {
+      window.ethereum.on("accountsChanged", (accounts) => {
+        setSignerAddress(accounts[0]);
+        if (!getIndex(accounts[0])) {
+          setAccounts((accounts) => accounts.concat({ address: accounts[0] }));
+        }
+      });
+      window.ethereum.on("chainChanged", (chainId) => {
+        setChainId(chainId);
+      });
+    } else {
+      alert("Install MetaMask");
+    }
+  }, []);
 
   useEffect(() => {
-    let intervalIds = [];
+    let intervalId;
     if (typeof window.ethereum !== "undefined") {
       getBalancesAndInterestAmounts()
         .then((response) => {
-          console.log("response:", response);
-          intervalIds = response;
-          console.log("IntervalIds in .then:", intervalIds);
+          intervalId = response;
         })
         .catch((err) =>
           console.log("Logging err in catch block after getbalances:", err)
@@ -56,101 +63,98 @@ function App() {
     } else {
       console.log("Install MetaMask!");
     }
-    console.log("IntervalIds at end of useEffect:", intervalIds);
     return () => {
-      console.log("CLEANUP FUNCTION CALLED");
-      intervalIds?.forEach((id) => clearInterval(id));
+      clearInterval(intervalId);
     };
-  }, [addresses]);
+  }, []);
+
+  function getIndex(address) {
+    for (let i = 0; i < accounts.length; i++) {
+      if ((accounts[i].address = address)) return i;
+    }
+    return -1;
+  }
 
   async function connectMetaMask() {
     try {
-      const accounts = await window.ethereum.request({
+      const [connectedSigner] = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
-      if (addresses.indexOf(accounts[0]) === -1) {
-        setAddresses((addresses) => addresses.concat(accounts[0]));
+      if (getIndex === -1) {
+        setAccounts((accounts) =>
+          accounts.concat({ address: connectedSigner })
+        );
       }
-      setSignerAddress(accounts[0]);
-      console.log("In connectMetaMask, loggingaddresses:", addresses);
     } catch (error) {
       console.log("Error in connectMetaMask, logging error: ", error);
     }
   }
 
   async function getBalancesAndInterestAmounts() {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const signer = provider.getSigner();
-    const EURDC = new ethers.Contract(contractAddress, abi, provider);
-    let amount, interimInterest;
-    console.log("In getbalances, logging addresses:", addresses);
-    let intervalIds = [];
-    addresses.forEach(async (address, index) => {
-      amount = await EURDC.balanceOf(address);
-      setBalances((balances) => {
-        let copy = [...balances];
-        if (copy[index]) {
-          ethers.utils.formatUnits(amount, 18);
-        } else copy.push(ethers.utils.formatUnits(amount, 18));
-        return copy;
-      });
-      intervalIds[index] = setInterval(async () => {
-        interimInterest = await EURDC.callStatic.updateInterest(
-          address,
+    let balance, balanceFormatted, interest, interestFormatted;
+    const intervalId = setInterval(() => {
+      accounts.forEach(async (account, index) => {
+        balance = await EURDC.balanceOf(account.address);
+        balanceFormatted = ethers.utils.formatUnits(balance, 18);
+        interest = await EURDC.callStatic.updateInterest(
+          account.address,
           Math.floor(Date.now() / 1000)
         );
-        setInterestAmounts((interestAmounts) => {
-          let copy = [...interestAmounts];
-          copy[index] = ethers.utils.formatUnits(interimInterest, 27);
-          return copy;
+        interestFormatted = ethers.utils.formatUnits(interest, 27);
+        setAccounts((accounts) => {
+          const copyAccounts = [...accounts];
+          copyAccounts[index] = {
+            ...accounts[index],
+            balance: balanceFormatted,
+            interest: interestFormatted,
+          };
+          return copyAccounts;
         });
-      }, 1000);
+        return intervalId;
+      });
     });
-    console.log("intervalIds:", intervalIds);
-    return intervalIds;
   }
 
   function handleClick(e) {
     const newAddress = document.getElementById("inputfield").value;
-    if (addresses.indexOf(newAddress) === -1) {
-      setAddresses((addresses) => addresses.concat(newAddress));
+    if (accounts.indexOf(newAddress) === -1) {
+      setAccounts((accounts) => accounts.concat(newAddress));
     }
-    console.log("In handlesubmit, logging addresses:", addresses);
   }
 
   async function handleTransfer(e) {
     e.preventDefault();
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    let signer = provider.getSigner();
-    const signerAddress = signer.getAddress();
     const fromAddress = document.getElementById("transferFrom").value;
-    let newSigner;
-    while (signerAddress !== fromAddress) {
+    if (signerAddress !== fromAddress) {
       alert("connect correct account");
-      [newSigner] = await window.ethereum.request({
+      const [newSigner] = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
-      signer = newSigner;
+      setSignerAddress(newSigner);
     }
+    const signer = await provider.getSigner();
     const toAddress = document.getElementById("transferTo").value;
     const amount = document.getElementById("transferAmount").value;
     const amountInWad = ethers.utils.parseUnits(amount.toString(), 18);
-    const EURDC = new ethers.Contract(contractAddress, abi, signer);
     let tx = await EURDC.connect(signer).transfer(toAddress, amountInWad);
     await tx.wait();
     const newBalanceSender = await EURDC.balanceOf(fromAddress);
     const newBalanceRecipient = await EURDC.balanceOf(toAddress);
-    const indexFromAddress = addresses.indexOf(fromAddress);
-    const indexToAddress = addresses.indexOf(toAddress);
-    setBalances((balances) => {
-      const copy = [...balances];
-      copy[indexFromAddress] = ethers.utils.formatUnits(newBalanceSender, 18);
-      copy[indexToAddress] = ethers.utils.formatUnits(newBalanceRecipient, 18);
-      return copy;
+    const indexFromAddress = getIndex(fromAddress);
+    const indexToAddress = getIndex(toAddress);
+    setAccounts((accounts) => {
+      const copyAccounts = [...accounts];
+      copyAccounts[indexFromAddress] = {
+        ...accounts[indexFromAddress],
+        balance: ethers.utils.formatUnits(newBalanceSender, 18),
+      };
+      copyAccounts[indexToAddress] = {
+        ...accounts[indexToAddress],
+        balance: ethers.utils.formatUnits(newBalanceRecipient, 18),
+      };
+      return copyAccounts;
     });
   }
-
-  console.log("Outside functions, logging addresses:", addresses);
 
   return (
     <>
@@ -175,7 +179,7 @@ function App() {
               aria-describedby="basic-addon1"
               id="inputfield"
               // onChange={(e) =>
-              //   setAddresses((addresses) => addresses.concat(e.target.value))
+              //   setAccounts((accounts) => accounts.concat(e.target.value))
               // }
             />
           </InputGroup>
@@ -220,7 +224,7 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            {addresses.map((address, index) => (
+            {accounts.map((address, index) => (
               <tr key={index}>
                 <td>
                   <h4 className="m-2">{address}</h4>
