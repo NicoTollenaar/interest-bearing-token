@@ -5,6 +5,7 @@ import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
 import FormControl from "react-bootstrap/FormControl";
+import Table from "react-bootstrap/Table";
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import contractAddressJSON from "./constants.json";
@@ -209,30 +210,31 @@ function App() {
             </Form>
           </Col>
         </Row>
-        <Row>
-          <Col>
-            <h2>Address</h2>
-          </Col>
-          <Col>
-            <h2>Balance</h2>
-          </Col>
-          <Col>
-            <h2>Interest</h2>
-          </Col>
-        </Row>
-        {addresses.map((address, index) => (
-          <Row key={index}>
-            <Col>
-              <h4 className="m-2">{address}</h4>
-            </Col>
-            <Col>
-              <h4 className="m-2">{balances[index]}</h4>
-            </Col>
-            <Col>
-              <h4 className="m-2">{interestAmounts[index]}</h4>
-            </Col>
-          </Row>
-        ))}
+
+        <Table striped bordered hover size="sm">
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>Balance</th>
+              <th>Interest</th>
+            </tr>
+          </thead>
+          <tbody>
+            {addresses.map((address, index) => (
+              <tr key={index}>
+                <td>
+                  <h4 className="m-2">{address}</h4>
+                </td>
+                <td>
+                  <h4 className="m-2">{balances[index]}</h4>
+                </td>
+                <td>
+                  <h4 className="m-2">{interestAmounts[index]}</h4>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
       </Container>
     </>
   );
