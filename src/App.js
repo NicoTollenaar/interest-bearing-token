@@ -54,7 +54,7 @@ function App() {
           console.log("Logging err in catch block after getbalances:", err)
         );
     } else {
-      console.log("Install MetaMask");
+      console.log("Install MetaMask!");
     }
     console.log("IntervalIds at end of useEffect:", intervalIds);
     return () => {
