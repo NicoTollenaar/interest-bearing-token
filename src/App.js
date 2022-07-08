@@ -14,19 +14,18 @@ const contractAddress = contractAddressJSON.rinkeby;
 const abi = EURDCJSON.abi;
 const provider = new ethers.providers.Web3Provider(window.ethereum);
 const EURDC = new ethers.Contract(contractAddress, abi, provider);
+let intervalId;
 
 function App() {
   const [accounts, setAccounts] = useState([
     {
-      address: "",
-      balance: 0,
-      interest: 0,
+      // address: "",
+      // balance: 0,
+      // interest: 0,
     },
   ]);
   const [signerAddress, setSignerAddress] = useState("");
   const [chainId, setChainId] = useState(0);
-  // const [balances, setBalances] = useState([]);
-  // const [interestAmounts, setInterestAmounts] = useState([]);
 
   useEffect(() => {
     connectMetaMask().catch((err) =>
@@ -38,8 +37,10 @@ function App() {
     if (typeof window.ethereum !== "undefined") {
       window.ethereum.on("accountsChanged", (accounts) => {
         setSignerAddress(accounts[0]);
-        if (!getIndex(accounts[0])) {
-          setAccounts((accounts) => accounts.concat({ address: accounts[0] }));
+        if (getIndex(accounts[0]) === -1) {
+          setAccounts((accounts) =>
+            accounts.concat([{ address: accounts[0] }])
+          );
         }
       });
       window.ethereum.on("chainChanged", (chainId) => {
@@ -51,7 +52,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    let intervalId;
     if (typeof window.ethereum !== "undefined") {
       getBalancesAndInterestAmounts()
         .then((response) => {
@@ -66,7 +66,7 @@ function App() {
     return () => {
       clearInterval(intervalId);
     };
-  }, []);
+  }, [accounts]);
 
   function getIndex(address) {
     for (let i = 0; i < accounts.length; i++) {
@@ -77,12 +77,12 @@ function App() {
 
   async function connectMetaMask() {
     try {
-      const [connectedSigner] = await window.ethereum.request({
+      const [connectedSignerAddress] = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
-      if (getIndex === -1) {
+      if (getIndex(connectedSignerAddress) === -1) {
         setAccounts((accounts) =>
-          accounts.concat({ address: connectedSigner })
+          accounts.concat({ address: connectedSignerAddress })
         );
       }
     } catch (error) {
@@ -92,7 +92,8 @@ function App() {
 
   async function getBalancesAndInterestAmounts() {
     let balance, balanceFormatted, interest, interestFormatted;
-    const intervalId = setInterval(() => {
+    if (intervalId) clearInterval(intervalId);
+    intervalId = setInterval(() => {
       accounts.forEach(async (account, index) => {
         balance = await EURDC.balanceOf(account.address);
         balanceFormatted = ethers.utils.formatUnits(balance, 18);
@@ -117,8 +118,8 @@ function App() {
 
   function handleClick(e) {
     const newAddress = document.getElementById("inputfield").value;
-    if (accounts.indexOf(newAddress) === -1) {
-      setAccounts((accounts) => accounts.concat(newAddress));
+    if (getIndex(newAddress) === -1) {
+      setAccounts((accounts) => accounts.concat({ address: newAddress }));
     }
   }
 
@@ -132,28 +133,30 @@ function App() {
       });
       setSignerAddress(newSigner);
     }
-    const signer = await provider.getSigner();
+    const signer = provider.getSigner();
     const toAddress = document.getElementById("transferTo").value;
     const amount = document.getElementById("transferAmount").value;
     const amountInWad = ethers.utils.parseUnits(amount.toString(), 18);
     let tx = await EURDC.connect(signer).transfer(toAddress, amountInWad);
     await tx.wait();
-    const newBalanceSender = await EURDC.balanceOf(fromAddress);
-    const newBalanceRecipient = await EURDC.balanceOf(toAddress);
-    const indexFromAddress = getIndex(fromAddress);
-    const indexToAddress = getIndex(toAddress);
-    setAccounts((accounts) => {
-      const copyAccounts = [...accounts];
-      copyAccounts[indexFromAddress] = {
-        ...accounts[indexFromAddress],
-        balance: ethers.utils.formatUnits(newBalanceSender, 18),
-      };
-      copyAccounts[indexToAddress] = {
-        ...accounts[indexToAddress],
-        balance: ethers.utils.formatUnits(newBalanceRecipient, 18),
-      };
-      return copyAccounts;
-    });
+    setAccounts((accounts) => accounts.concat([{ address: toAddress }]));
+
+    // const newBalanceSender = await EURDC.balanceOf(fromAddress);
+    // const newBalanceRecipient = await EURDC.balanceOf(toAddress);
+    // const indexFromAddress = getIndex(fromAddress);
+    // const indexToAddress = getIndex(toAddress);
+    // setAccounts((accounts) => {
+    //   const copyAccounts = [...accounts];
+    //   copyAccounts[indexFromAddress] = {
+    //     ...accounts[indexFromAddress],
+    //     balance: ethers.utils.formatUnits(newBalanceSender, 18),
+    //   };
+    //   copyAccounts[indexToAddress] = {
+    //     ...accounts[indexToAddress],
+    //     balance: ethers.utils.formatUnits(newBalanceRecipient, 18),
+    //   };
+    //   return copyAccounts;
+    // });
   }
 
   return (
@@ -224,16 +227,16 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            {accounts.map((address, index) => (
+            {accounts.map((account, index) => (
               <tr key={index}>
                 <td>
-                  <h4 className="m-2">{address}</h4>
+                  <h6 className="m-2">{account.address}</h6>
                 </td>
                 <td>
-                  <h4 className="m-2">{balances[index]}</h4>
+                  <h6 className="m-2">{account.balance}</h6>
                 </td>
                 <td>
-                  <h4 className="m-2">{interestAmounts[index]}</h4>
+                  <h6 className="m-2">{account.interest}</h6>
                 </td>
               </tr>
             ))}
