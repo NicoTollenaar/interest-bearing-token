@@ -12,6 +12,10 @@ const rateInRayFormatted = ethers.BigNumber.from(
 function getRateInRayFormatted(annualRate) {
   const ratePerSecond = (1 + annualRate) ** (1 / secondsPerYear);
   const inRay = ratePerSecond * 10 ** 27;
+  console.log(
+    "inRay.toLocaleString(...):",
+    inRay.toLocaleString("fullwide", { useGrouping: false })
+  );
   const inRayFormatted = ethers.BigNumber.from(
     inRay.toLocaleString("fullwide", { useGrouping: false })
   );
@@ -32,11 +36,12 @@ describe("Testing EURDC contract", function () {
       EURDC = await Factory.deploy(rateInRayFormatted);
       await EURDC.deployed();
       deployerAddress = EURDC.signer.address;
-      tx = await EURDC.setInterestRate(
-        ethers.BigNumber.from(
-          rateInRay.toLocaleString("fullwide", { useGrouping: false })
-        )
-      );
+      tx = await EURDC.setInterestRate(rateInRayFormatted);
+      // tx = await EURDC.setInterestRate(
+      //   ethers.BigNumber.from(
+      //     rateInRay.toLocaleString("fullwide", { useGrouping: false })
+      //   )
+      // );
       await tx.wait();
     } catch (error) {
       console.log("Error in catch block:", error);

@@ -21,6 +21,10 @@ contract EURDC is ERC20, ERC20Burnable, DSMath {
         return 18;
     }
 
+    function getRateInRay() public view returns (uint) {
+        return rateInRay;
+    }
+
     function mulDiv(
         uint x,
         uint y,
@@ -94,16 +98,12 @@ contract EURDC is ERC20, ERC20Burnable, DSMath {
         return -1;
     }
 
-    // change transferFrom accordingly and then test
-
     function transfer(address to, uint256 amount)
         public
         virtual
         override
         returns (bool)
     {
-        // still to do: include and update array of tokenholders
-        // (add new recipient and remove existing tokenholder if balance becomes zero)
         if (getIndex(to) == -1) {
             tokenholders.push(to);
         }
@@ -122,15 +122,6 @@ contract EURDC is ERC20, ERC20Burnable, DSMath {
         addInterestToBalance(to);
         super.transfer(to, amount);
         console.log("balance sender after transfer:", balanceOf(msg.sender));
-        // if (balanceOf(msg.sender) == 0) {
-        //     int index = getIndex(msg.sender);
-        //     require(
-        //         index != -1,
-        //         "msg.sender not in tokenholders array, something wrong"
-        //     );
-        //     tokenholders[uint(index)] = tokenholders[tokenholders.length - 1];
-        //     tokenholders.pop();
-        // }
         return true;
     }
 
@@ -139,8 +130,6 @@ contract EURDC is ERC20, ERC20Burnable, DSMath {
         address to,
         uint256 amount
     ) public virtual override returns (bool) {
-        // still to do: include and update array of tokenholders
-        // (add new recipient and remove existing tokenholder if balance becomes zero)
         if (getIndex(to) == -1) {
             tokenholders.push(to);
         }
@@ -149,15 +138,6 @@ contract EURDC is ERC20, ERC20Burnable, DSMath {
         updateInterest(to, block.timestamp);
         addInterestToBalance(to);
         super.transferFrom(from, to, amount);
-        // if (balanceOf(msg.sender) == 0) {
-        //     int index = getIndex(msg.sender);
-        //     require(
-        //         index != -1,
-        //         "msg.sender not in tokenholders array, something wrong"
-        //     );
-        //     tokenholders[uint(index)] = tokenholders[tokenholders.length - 1];
-        //     tokenholders.pop();
-        // }
         return true;
     }
 
