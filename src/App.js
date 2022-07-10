@@ -35,7 +35,6 @@ function App() {
   useEffect(() => {
     getInterestRate()
       .then((result) => {
-        console.log("result from getInterestRate:", result);
         setInterestRate(result);
       })
       .catch((err) => console.log(err));
@@ -43,9 +42,7 @@ function App() {
 
   async function getInterestRate() {
     let rateInRay = await EURDC.getRateInRay();
-    console.log("rateInRay:", rateInRay);
     let annualRate = (rateInRay / 10 ** 27) ** (60 * 60 * 24 * 365) - 1;
-    console.log("annualRate:", annualRate);
     let annualRateRounded = annualRate.toFixed(2);
     return annualRateRounded;
   }
@@ -54,7 +51,6 @@ function App() {
     if (typeof window.ethereum !== "undefined") {
       window.ethereum.on("accountsChanged", (metamaskAccounts) => {
         setSignerAddress(metamaskAccounts[0]);
-        console.log("metamaskAccounts[0]", metamaskAccounts[0]);
         if (getIndex(metamaskAccounts[0]) === -1) {
           setAccounts((accounts) => [
             ...accounts,
@@ -128,11 +124,8 @@ function App() {
   }
 
   async function handleTransfer(e) {
-    console.log("handleTransfer called!");
     e.preventDefault();
     const fromAddress = document.getElementById("transferFrom").value;
-    console.log("signerAddress:", signerAddress);
-    console.log("fromAddress:", fromAddress);
     if (signerAddress !== fromAddress) {
       alert("connect correct account");
       const [newSigner] = await window.ethereum.request({
@@ -141,11 +134,12 @@ function App() {
       setSignerAddress(newSigner);
     }
     const signer = provider.getSigner();
-    console.log("signer:", signer);
     const toAddress = document.getElementById("transferTo").value;
     const amount = document.getElementById("transferAmount").value;
     const amountInWad = ethers.utils.parseUnits(amount.toString(), 18);
-    let tx = await EURDC.connect(signer).transfer(toAddress, amountInWad);
+    let tx = await EURDC.connect(signer).transfer(toAddress, amountInWad, {
+      gasLimit: 999999,
+    });
     await tx.wait();
     if (getIndex(toAddress) === -1) {
       setAccounts((accounts) => accounts.concat([{ address: toAddress }]));
@@ -158,43 +152,44 @@ function App() {
     const toAddress = document.getElementById("issueTo").value;
     const amount = document.getElementById("issueAmount").value;
     const amountInWad = ethers.utils.parseUnits(amount.toString(), 18);
-    let tx = await EURDC.connect(deployerSigner).issue(toAddress, amountInWad);
-    await tx.wait();
-    if (getIndex(toAddress) === -1) {
-      setAccounts((accounts) => accounts.concat([{ address: toAddress }]));
+    try {
+      let tx = await EURDC.connect(deployerSigner).issue(
+        toAddress,
+        amountInWad,
+        { gasLimit: 999999 }
+      );
+      await tx.wait();
+      if (getIndex(toAddress) === -1) {
+        setAccounts((accounts) => accounts.concat([{ address: toAddress }]));
+      }
+    } catch (error) {
+      console.log(
+        "In catch block of issue function call, logging error:",
+        error
+      );
     }
   }
 
   function getRateInRayFormatted(annualRate) {
     const secondsPerYear = 60 * 60 * 24 * 365;
-    console.log("annualrate:", annualRate);
     const ratePerSecond = (1 + Number(annualRate)) ** (1 / secondsPerYear);
-    console.log("HERE ratePerSecond:", ratePerSecond);
     const inRay = ratePerSecond * 10 ** 27;
-    console.log("inRay:", inRay);
-    console.log(
-      "inRay.toLocaleString(...):",
-      inRay.toLocaleString("fullwide", { useGrouping: false })
-    );
     const inRayFormatted = ethers.BigNumber.from(
       inRay.toLocaleString("fullwide", { useGrouping: false })
     );
-    console.log("inRayFormatted:", inRayFormatted);
     return inRayFormatted;
   }
 
   async function handleChangeRate() {
     const newRate = document.getElementById("newRate").value;
-    console.log("newRate:", newRate);
     const newRateInRay = getRateInRayFormatted(newRate);
-    console.log("newRateInRay:", newRateInRay);
     const signer = provider.getSigner();
-    const tx = await EURDC.connect(signer).setInterestRate(newRateInRay);
+    const tx = await EURDC.connect(signer).setInterestRate(newRateInRay, {
+      gasLimit: 999999,
+    });
     await tx.wait();
     const newRateFromContract = await getInterestRate();
-    console.log("newRateFromContact", newRateFromContract);
     setInterestRate(newRateFromContract);
-    // setInterestRate(newRate);
   }
 
   return (
