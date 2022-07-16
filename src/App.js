@@ -6,6 +6,7 @@ import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
 import FormControl from "react-bootstrap/FormControl";
 import Table from "react-bootstrap/Table";
+import { Trash } from "react-bootstrap-icons";
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import contractAddressJSON from "./constants.json";
@@ -24,7 +25,8 @@ function App() {
   const [interestRate, setInterestRate] = useState(0);
 
   const [signerAddress, setSignerAddress] = useState("");
-  const [chainId, setChainId] = useState(0);
+  const [network, setNetwork] = useState("");
+  const [contractAddress, setContractAddress] = useState("");
 
   useEffect(() => {
     connectMetaMask().catch((err) =>
@@ -59,12 +61,32 @@ function App() {
         }
       });
       window.ethereum.on("chainChanged", (chainId) => {
-        setChainId(chainId);
+        const newNetworkName = getNetworkName(chainId);
+        const newContractAddress = setNetwork(newNetworkName);
+        setContractAddress();
       });
     } else {
       alert("Install MetaMask");
     }
   }, []);
+
+  function getNetworkName(chainId) {
+    let networkName;
+    switch (chainId) {
+      case "4":
+        networkName = "rinkeby";
+        break;
+      case "31337":
+        networkName = "hardhat";
+        break;
+      case "1337":
+        networkName = "ganache";
+        break;
+      default:
+        console.log("Something went wrong in switch block");
+    }
+    return networkName;
+  }
 
   useEffect(() => {
     if (typeof window.ethereum !== "undefined") {
@@ -192,6 +214,15 @@ function App() {
     setInterestRate(newRateFromContract);
   }
 
+  function handleDelete(account) {
+    let indexAccount = accounts.indexOf(account);
+    setAccounts((accounts) => {
+      let copyAccounts = [...accounts];
+      copyAccounts.splice(indexAccount, 1);
+      return copyAccounts;
+    });
+  }
+
   return (
     <>
       <Container>
@@ -199,14 +230,28 @@ function App() {
           <Col>
             <h1>EURDC</h1>
           </Col>
-          <Col className="d-flex align-items-center">
-            <h6>Annual Rate: {interestRate}</h6>
+          <Col className="d-flex">
+            <h6 className="mt-4 me-3">Network:</h6>
+            <Form.Select
+              value={network}
+              onChange={(e) => setChainId(e.target.value)}
+              className="mt-3"
+              aria-label="Default select example"
+              size="sm"
+            >
+              <option value="1">Rinkeby</option>
+              <option value="2">Ganache</option>
+              <option value="3">Hardhat</option>
+            </Form.Select>
+          </Col>
+          <Col className="d-flex justify-content-end align-items-center">
+            <h6 className="mt-3">Annual Rate: {interestRate}</h6>
           </Col>
           <Col>
             <InputGroup className="mt-1 mb-1" placeholder="New interest rate">
               <Button
-                className="sm"
-                variant="outline-secondary"
+                className="sm mt-3"
+                variant="outline-primary"
                 id="button-addon1"
                 type="button"
                 onClick={handleChangeRate}
@@ -214,6 +259,7 @@ function App() {
                 Change rate
               </Button>
               <FormControl
+                className="mt-3"
                 aria-label="Example text with button addon"
                 aria-describedby="basic-addon1"
                 id="newRate"
@@ -222,11 +268,12 @@ function App() {
             </InputGroup>
           </Col>
         </Row>
+        <h6>Add addres</h6>
         <Row>
           <InputGroup className="mt-2 mb-2">
             <Button
               className="sm"
-              variant="outline-secondary"
+              variant="outline-primary"
               id="button-addon1"
               type="button"
               onClick={handleAdd}
@@ -234,12 +281,14 @@ function App() {
               Add address
             </Button>
             <FormControl
+              placeholder="Address to add"
               aria-label="Example text with button addon"
               aria-describedby="basic-addon1"
               id="inputfield"
             />
           </InputGroup>
         </Row>
+        <h6>Issue</h6>
         <Row>
           <Col>
             <Form onSubmit={handleIssue}>
@@ -251,18 +300,26 @@ function App() {
                 />
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Control
-                  type="number"
-                  placeholder="Amount to issue"
-                  id="issueAmount"
-                />
+                <InputGroup className="mt-1 mb-1">
+                  <Button
+                    className="sm"
+                    variant="outline-primary"
+                    id="button-addon1"
+                    type="submit"
+                  >
+                    Issue
+                  </Button>
+                  <Form.Control
+                    type="number"
+                    placeholder="Amount to issue"
+                    id="issueAmount"
+                  />
+                </InputGroup>
               </Form.Group>
-              <Button variant="primary" type="submit">
-                Issue
-              </Button>
             </Form>
           </Col>
         </Row>
+        <h6>Transfer</h6>
         <Row>
           <Col>
             <Form onSubmit={handleTransfer}>
@@ -281,15 +338,22 @@ function App() {
                 />
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Control
-                  type="number"
-                  placeholder="Amount"
-                  id="transferAmount"
-                />
+                <InputGroup className="mt-1 mb-1">
+                  <Button
+                    className="sm"
+                    variant="outline-primary"
+                    id="button-addon1"
+                    type="submit"
+                  >
+                    Transfer
+                  </Button>
+                  <Form.Control
+                    type="number"
+                    placeholder="Amount to transfer"
+                    id="transferAmount"
+                  />
+                </InputGroup>
               </Form.Group>
-              <Button variant="primary" type="submit">
-                Transfer
-              </Button>
             </Form>
           </Col>
         </Row>
@@ -313,6 +377,16 @@ function App() {
                 </td>
                 <td>
                   <h6 className="m-2">{account.interest}</h6>
+                </td>
+                <td>
+                  <Button
+                    className="sm"
+                    type="button"
+                    variant="outline-primary"
+                    onClick={handleDelete}
+                  >
+                    <Trash />
+                  </Button>
                 </td>
               </tr>
             ))}
