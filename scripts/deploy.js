@@ -44,7 +44,10 @@ async function main() {
     case 4:
       contractAddress.rinkeby = EURDC.address;
       contractAddress.rinkebyDeployer = deployerAddress;
-
+      break;
+    case 5:
+      contractAddress.goerli = EURDC.address;
+      contractAddress.goerliDeployer = deployerAddress;
       break;
     case 31337:
       contractAddress.hardhat = EURDC.address;

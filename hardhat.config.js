@@ -39,6 +39,13 @@ module.exports = {
         `0x${process.env.RINKEBY_PRIVATE_KEY_TWO}`,
       ],
     },
+    goerli: {
+      url: `${process.env.ALCHEMY_GOERLI_URL}`,
+      accounts: [
+        `0x${process.env.GOERLI_PRIVATE_KEY_ONE}`,
+        `0x${process.env.GOERLI_PRIVATE_KEY_TWO}`,
+      ],
+    },
   },
   paths: {
     artifacts: "./src/artifacts",

@@ -11,117 +11,25 @@ import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import contractAddressJSON from "./constants.json";
 import EURDCJSON from "./artifacts/contracts/EURDC.sol/EURDC.json";
-const network = "ganache";
-const contractAddress = contractAddressJSON[`${network}`];
-console.log("network:", network);
-console.log("EURDC contractaddress:", contractAddress);
+import networks from "./networkFile.js";
+
 const abi = EURDCJSON.abi;
-const provider = new ethers.providers.Web3Provider(window.ethereum);
-const EURDC = new ethers.Contract(contractAddress, abi, provider);
+const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
 let intervalId;
 
 function App() {
   const [accounts, setAccounts] = useState([]);
   const [interestRate, setInterestRate] = useState(0);
-
   const [signerAddress, setSignerAddress] = useState("");
-  const [network, setNetwork] = useState("");
+  const [chainId, setChainId] = useState("");
   const [contractAddress, setContractAddress] = useState("");
+  const [EURDC, setEURDC] = useState({});
 
   useEffect(() => {
     connectMetaMask().catch((err) =>
       console.log("Error in calling connectUser, loggin error: ", err)
     );
   }, []);
-
-  useEffect(() => {
-    getInterestRate()
-      .then((result) => {
-        setInterestRate(result);
-      })
-      .catch((err) => console.log(err));
-  }, []);
-
-  async function getInterestRate() {
-    let rateInRay = await EURDC.getRateInRay();
-    let annualRate = (rateInRay / 10 ** 27) ** (60 * 60 * 24 * 365) - 1;
-    let annualRateRounded = annualRate.toFixed(2);
-    return annualRateRounded;
-  }
-
-  useEffect(() => {
-    if (typeof window.ethereum !== "undefined") {
-      window.ethereum.on("accountsChanged", (metamaskAccounts) => {
-        setSignerAddress(metamaskAccounts[0]);
-        if (getIndex(metamaskAccounts[0]) === -1) {
-          setAccounts((accounts) => [
-            ...accounts,
-            { address: metamaskAccounts[0] },
-          ]);
-        }
-      });
-      window.ethereum.on("chainChanged", (chainId) => {
-        const newNetworkName = getNetworkName(chainId);
-        const newContractAddress = setNetwork(newNetworkName);
-        setContractAddress();
-      });
-    } else {
-      alert("Install MetaMask");
-    }
-  }, []);
-
-  function getNetworkName(chainId) {
-    let networkName;
-    switch (chainId) {
-      case "4":
-        networkName = "rinkeby";
-        break;
-      case "31337":
-        networkName = "hardhat";
-        break;
-      case "1337":
-        networkName = "ganache";
-        break;
-      default:
-        console.log("Something went wrong in switch block");
-    }
-    return networkName;
-  }
-
-  useEffect(() => {
-    if (typeof window.ethereum !== "undefined") {
-      if (intervalId) clearInterval(intervalId);
-      intervalId = setInterval(() => {
-        setAccounts((accounts) => {
-          let copyAccounts = JSON.parse(JSON.stringify(accounts));
-          copyAccounts.forEach(async (account) => {
-            let balance = await EURDC.balanceOf(account.address);
-            let balanceFormatted = ethers.utils.formatUnits(balance, 18);
-            let interest = await EURDC.callStatic.updateInterest(
-              account.address,
-              Math.floor(Date.now() / 1000)
-            );
-            let interestFormatted = ethers.utils.formatUnits(interest, 27);
-            account.balance = balanceFormatted;
-            account.interest = interestFormatted;
-          });
-          return copyAccounts;
-        });
-      }, 1000);
-    } else {
-      console.log("Install MetaMask!");
-    }
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [accounts]);
-
-  function getIndex(address) {
-    for (let i = 0; i < accounts.length; i++) {
-      if (accounts[i].address === address) return i;
-    }
-    return -1;
-  }
 
   async function connectMetaMask() {
     try {
@@ -138,9 +46,174 @@ function App() {
     }
   }
 
+  useEffect(() => {
+    provider
+      .getNetwork()
+      .then((network) => {
+        console.log(
+          "In useEffect getNetwork, logging ethers.utilshexValue(network.chainId):",
+          ethers.utils.hexValue(network.chainId)
+        );
+        setChainId(ethers.utils.hexValue(network.chainId));
+      })
+      .catch((err) => console.log(err));
+  }, []);
+
+  useEffect(() => {
+    console.log(
+      "In useeffect calling getNetworkName, logging chainId:",
+      chainId
+    );
+    const networkName = getNetworkName();
+    console.log("In useEffect, logging networkName:", networkName);
+    console.log(
+      "contractAddressJSON[{networkName}]:",
+      contractAddressJSON[`${networkName}`]
+    );
+    setContractAddress(contractAddressJSON[`${networkName}`]);
+  }, [chainId]);
+
+  useEffect(() => {
+    console.log(
+      "In useEffect creating contract instance, logging contractaddress:",
+      contractAddress
+    );
+    if (contractAddress) {
+      const newContract = new ethers.Contract(contractAddress, abi, provider);
+      console.log(
+        "In useEffect creating contract instance, logging EURDC (newContract):",
+        newContract
+      );
+      setEURDC(newContract);
+    }
+  }, [contractAddress]);
+
+  useEffect(() => {
+    if (EURDC.address) {
+      getInterestRate()
+        .then((result) => {
+          setInterestRate(result);
+        })
+        .catch((err) => console.log(err));
+    }
+  }, [EURDC]);
+
+  async function getInterestRate() {
+    let rateInRay = await EURDC.getRateInRay();
+    let annualRate = (rateInRay / 10 ** 27) ** (60 * 60 * 24 * 365) - 1;
+    let annualRateRounded = annualRate.toFixed(2);
+    return annualRateRounded;
+  }
+
+  useEffect(() => {
+    if (typeof window.ethereum !== "undefined") {
+      window.ethereum.on("accountsChanged", handleAccountsChange);
+      window.ethereum.on("chainChanged", handleChainChange);
+    } else {
+      alert("Install MetaMask");
+    }
+    return () => {
+      window.ethereum.removeListener("chainChanged", handleChainChange);
+      window.ethereum.removeListener("accountsChanged", handleAccountsChange);
+    };
+  }, []);
+
+  function handleChainChange(chainId) {
+    console.log(
+      "In listener (indirectly,  via handleChange), chain changed, new chainid:",
+      chainId
+    );
+    setChainId(chainId);
+  }
+
+  function handleAccountsChange(accountsArray) {
+    console.log("In listener logging metamaskaccounts[0]:", accountsArray[0]);
+    console.log("in same place logging accounts:", accounts);
+    setSignerAddress(accountsArray[0]);
+    if (getIndex(accountsArray[0]) === -1) {
+      console.log(
+        "in listener on accountsChanged, logging getIndex(accountsArray[0]):",
+        getIndex(accountsArray[0])
+      );
+      setAccounts((accounts) => [...accounts, { address: accountsArray[0] }]);
+    }
+  }
+
+  function getNetworkName() {
+    let networkName;
+    switch (chainId) {
+      case "0x4":
+        networkName = "rinkeby";
+        break;
+      case "0x5":
+        networkName = "goerli";
+        break;
+      case "0x7a69":
+        networkName = "hardhat";
+        break;
+      case "0x539":
+        networkName = "ganache";
+        break;
+      default:
+        console.log("In switch block, no chainId yet");
+    }
+    return networkName;
+  }
+
+  useEffect(() => {
+    if (typeof window.ethereum !== "undefined") {
+      if (intervalId) clearInterval(intervalId);
+      if (EURDC.address) {
+        intervalId = setInterval(() => {
+          setAccounts((accounts) => {
+            let copyAccounts = JSON.parse(JSON.stringify(accounts));
+            copyAccounts.forEach(async (account) => {
+              let balance = await EURDC.balanceOf(account.address);
+              let balanceFormatted = ethers.utils.formatUnits(balance, 18);
+              let interest = await EURDC.callStatic.updateInterest(
+                account.address,
+                Math.floor(Date.now() / 1000)
+              );
+              let interestFormatted = ethers.utils.formatUnits(interest, 27);
+              account.balance = balanceFormatted;
+              account.interest = interestFormatted;
+            });
+            return copyAccounts;
+          });
+        }, 1000);
+      }
+    } else {
+      console.log("Install MetaMask!");
+    }
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [accounts, EURDC]);
+
+  function getIndex(address) {
+    console.log("In getIndex:");
+    console.log("accounts.length:", accounts.length);
+    if (accounts.length === 0) return -1;
+    for (let i = 0; i < accounts.length; i++) {
+      if (accounts[i].address.toLowerCase() === address.toLowerCase()) {
+        console.log(
+          "accounts[i].address.toLowerCase()",
+          accounts[i].address.toLowerCase()
+        );
+        console.log("address.toLowerCase():", address.toLowerCase());
+        return i;
+      }
+      return -1;
+    }
+  }
+
   function handleAdd(e) {
     const newAddress = document.getElementById("inputfield").value;
     if (getIndex(newAddress) === -1) {
+      console.log(
+        "in handle Add past getIndex condition:",
+        getIndex(newAddress)
+      );
       setAccounts((accounts) => [...accounts, { address: newAddress }]);
     }
   }
@@ -155,7 +228,7 @@ function App() {
       });
       setSignerAddress(newSigner);
     }
-    const signer = provider.getSigner();
+    const signer = provider.getSigner(fromAddress);
     const toAddress = document.getElementById("transferTo").value;
     const amount = document.getElementById("transferAmount").value;
     const amountInWad = ethers.utils.parseUnits(amount.toString(), 18);
@@ -182,6 +255,7 @@ function App() {
       );
       await tx.wait();
       if (getIndex(toAddress) === -1) {
+        console.log("condition getIndex -1 met:");
         setAccounts((accounts) => accounts.concat([{ address: toAddress }]));
       }
     } catch (error) {
@@ -223,31 +297,131 @@ function App() {
     });
   }
 
+  async function handleSwitchNetwork(e) {
+    console.log(
+      "In handleSwitchNetwork, logging e.target.value:",
+      e.target.value
+    );
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: e.target.value }],
+      });
+    } catch (switchError) {
+      console.log(
+        "In switch network catch block, logging addError:",
+        switchError
+      );
+      if (switchError.code === 4902) {
+        const networkToAdd = networks.reduce((curr, acc) => {
+          if (curr.chainId === e.target.value) acc = curr;
+          return acc;
+        });
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [networkToAdd],
+          });
+        } catch (addError) {
+          console.log(
+            "In add network catch block, logging addError:",
+            addError
+          );
+        }
+      }
+    }
+  }
+
+  provider
+    .getNetwork()
+    .then((network) => {
+      console.log("true network name and Id:", network.name, network.chainId);
+    })
+    .catch((err) => console.log(err));
+
+  useEffect(() => {
+    async function getAccounts() {
+      const signer = provider.getSigner();
+      const address = await signer.getAddress();
+      setSignerAddress(address);
+      const listedAccounts = await provider.listAccounts();
+      console.log(
+        "In useEffect getAccounts, logging listedAccounts:",
+        listedAccounts
+      );
+      return listedAccounts;
+    }
+    getAccounts()
+      .then((listedAccounts) => {
+        const networkAccounts = listedAccounts.map((e) => {
+          return { address: e };
+        });
+        console.log(
+          "In useEffect getAccounts, logging networkAccounts:",
+          networkAccounts
+        );
+        setAccounts(networkAccounts);
+        // setAccounts((accounts) => {
+        //   const copy = [...accounts];
+        //   let exists = false;
+        //   for (let i = 0; i < networkAccounts.length; i++) {
+        //     exists = false;
+        //     for (let j = 0; j < copy.length; j++) {
+        //       if (
+        //         networkAccounts[i].address.toLowerCase() ===
+        //         copy[j].address.toLowerCase()
+        //       )
+        //         exists = true;
+        //     }
+        //     if (!exists) copy.concat(networkAccounts[i]);
+        //   }
+        //   return copy;
+        // });
+      })
+      .catch((err) => console.log(err));
+  }, [chainId]);
+
   return (
     <>
       <Container>
         <Row>
-          <Col>
+          <Col md="auto">
             <h1>EURDC</h1>
           </Col>
-          <Col className="d-flex">
+          <Col className="d-flex d-row inline justify-content-between mt-4">
+            <h6>Contract address:</h6>
+            <p>{contractAddress}</p>
+          </Col>
+          <Col md="auto" className="d-flex">
             <h6 className="mt-4 me-3">Network:</h6>
             <Form.Select
-              value={network}
-              onChange={(e) => setChainId(e.target.value)}
-              className="mt-3"
+              value={chainId}
+              // defaultValue={chainId}
+              onChange={handleSwitchNetwork}
+              className="mt-3 selected"
               aria-label="Default select example"
               size="sm"
             >
-              <option value="1">Rinkeby</option>
-              <option value="2">Ganache</option>
-              <option value="3">Hardhat</option>
+              {networks.map((network, index) => (
+                <option
+                  key={index}
+                  value={network.chainId}
+                  className={
+                    network.chainId === chainId ? "selected" : "unselected"
+                  }
+                >
+                  {network.chainName}
+                </option>
+              ))}
             </Form.Select>
           </Col>
-          <Col className="d-flex justify-content-end align-items-center">
+          <Col
+            md="auto"
+            className="d-flex justify-content-end align-items-center"
+          >
             <h6 className="mt-3">Annual Rate: {interestRate}</h6>
           </Col>
-          <Col>
+          <Col md="auto">
             <InputGroup className="mt-1 mb-1" placeholder="New interest rate">
               <Button
                 className="sm mt-3"
@@ -269,6 +443,7 @@ function App() {
           </Col>
         </Row>
         <h6>Add addres</h6>
+        <p>{signerAddress}</p>
         <Row>
           <InputGroup className="mt-2 mb-2">
             <Button
@@ -370,7 +545,13 @@ function App() {
             {accounts.map((account, index) => (
               <tr key={index}>
                 <td>
-                  <h6 className="m-2">{account.address}</h6>
+                  <h6
+                    className={
+                      account.address === signerAddress ? "m-2 signer" : "m-2"
+                    }
+                  >
+                    {account.address}
+                  </h6>
                 </td>
                 <td>
                   <h6 className="m-2">{account.balance}</h6>
