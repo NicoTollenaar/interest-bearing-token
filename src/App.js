@@ -116,7 +116,7 @@ function App() {
       window.ethereum.removeListener("chainChanged", handleChainChange);
       window.ethereum.removeListener("accountsChanged", handleAccountsChange);
     };
-  }, []);
+  }, [accounts]);
 
   function handleChainChange(chainId) {
     console.log(
@@ -190,21 +190,30 @@ function App() {
     };
   }, [accounts, EURDC]);
 
+  // console.log(
+  //   "Outside of all functions logging acconts.length and accounts:",
+  //   accounts.length,
+  //   accounts
+  // );
+
   function getIndex(address) {
-    console.log("In getIndex:");
-    console.log("accounts.length:", accounts.length);
+    console.log(
+      "In getIndex logging accounts.length and accounts:",
+      accounts.length,
+      accounts
+    );
     if (accounts.length === 0) return -1;
     for (let i = 0; i < accounts.length; i++) {
+      console.log(
+        "accounts[i].address.toLowerCase()",
+        accounts[i].address.toLowerCase()
+      );
+      console.log("address.toLowerCase():", address.toLowerCase());
       if (accounts[i].address.toLowerCase() === address.toLowerCase()) {
-        console.log(
-          "accounts[i].address.toLowerCase()",
-          accounts[i].address.toLowerCase()
-        );
-        console.log("address.toLowerCase():", address.toLowerCase());
         return i;
       }
-      return -1;
     }
+    return -1;
   }
 
   function handleAdd(e) {
@@ -221,14 +230,14 @@ function App() {
   async function handleTransfer(e) {
     e.preventDefault();
     const fromAddress = document.getElementById("transferFrom").value;
-    if (signerAddress !== fromAddress) {
+    if (signerAddress.toLowerCase() !== fromAddress.toLowerCase()) {
       alert("connect correct account");
       const [newSigner] = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
       setSignerAddress(newSigner);
     }
-    const signer = provider.getSigner(fromAddress);
+    const signer = provider.getSigner();
     const toAddress = document.getElementById("transferTo").value;
     const amount = document.getElementById("transferAmount").value;
     const amountInWad = ethers.utils.parseUnits(amount.toString(), 18);
@@ -547,7 +556,10 @@ function App() {
                 <td>
                   <h6
                     className={
-                      account.address === signerAddress ? "m-2 signer" : "m-2"
+                      account.address.toLowerCase() ===
+                      signerAddress.toLowerCase()
+                        ? "m-2 signer"
+                        : "m-2"
                     }
                   >
                     {account.address}
