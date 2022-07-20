@@ -25,22 +25,23 @@ function App() {
   const [contractAddress, setContractAddress] = useState("");
   const [EURDC, setEURDC] = useState({});
 
-  useEffect(() => {
-    connectMetaMask().catch((err) =>
-      console.log("Error in calling connectUser, loggin error: ", err)
-    );
-  }, []);
+  // useEffect(() => {
+  //   connectMetaMask().catch((err) =>
+  //     console.log("Error in calling connectUser, loggin error: ", err)
+  //   );
+  // }, []);
 
   async function connectMetaMask() {
     try {
       const [connectedSignerAddress] = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
-      if (getIndex(connectedSignerAddress) === -1) {
-        setAccounts((accounts) =>
-          accounts.concat([{ address: connectedSignerAddress }])
-        );
-      }
+      // if (getIndex(connectedSignerAddress) === -1) {
+      //   setAccounts((accounts) => [
+      //     ...accounts,
+      //     { address: connectedSignerAddress },
+      //   ]);
+      // }
     } catch (error) {
       console.log("Error in connectMetaMask, logging error: ", error);
     }
@@ -108,13 +109,22 @@ function App() {
   useEffect(() => {
     if (typeof window.ethereum !== "undefined") {
       window.ethereum.on("accountsChanged", handleAccountsChange);
+    } else {
+      alert("Install MetaMask");
+    }
+    return () => {
+      window.ethereum.removeListener("accountsChanged", handleAccountsChange);
+    };
+  }, [accounts]);
+
+  useEffect(() => {
+    if (typeof window.ethereum !== "undefined") {
       window.ethereum.on("chainChanged", handleChainChange);
     } else {
       alert("Install MetaMask");
     }
     return () => {
       window.ethereum.removeListener("chainChanged", handleChainChange);
-      window.ethereum.removeListener("accountsChanged", handleAccountsChange);
     };
   }, [accounts]);
 
@@ -370,22 +380,6 @@ function App() {
           networkAccounts
         );
         setAccounts(networkAccounts);
-        // setAccounts((accounts) => {
-        //   const copy = [...accounts];
-        //   let exists = false;
-        //   for (let i = 0; i < networkAccounts.length; i++) {
-        //     exists = false;
-        //     for (let j = 0; j < copy.length; j++) {
-        //       if (
-        //         networkAccounts[i].address.toLowerCase() ===
-        //         copy[j].address.toLowerCase()
-        //       )
-        //         exists = true;
-        //     }
-        //     if (!exists) copy.concat(networkAccounts[i]);
-        //   }
-        //   return copy;
-        // });
       })
       .catch((err) => console.log(err));
   }, [chainId]);
@@ -397,7 +391,20 @@ function App() {
           <Col md="auto">
             <h1>EURDC</h1>
           </Col>
-          <Col className="d-flex d-row inline justify-content-between mt-4">
+          <Col md="auto">
+            <Button
+              className="mt-3"
+              onClick={connectMetaMask}
+              variant="secondary"
+              size="sm"
+            >
+              Connect MetaMask
+            </Button>
+          </Col>
+          <Col
+            md="auto"
+            className="d-flex d-row inline justify-content-between mt-4"
+          >
             <h6>Contract address:</h6>
             <p>{contractAddress}</p>
           </Col>
@@ -442,6 +449,7 @@ function App() {
                 Change rate
               </Button>
               <FormControl
+                size="sm"
                 className="mt-3"
                 aria-label="Example text with button addon"
                 aria-describedby="basic-addon1"
@@ -452,7 +460,7 @@ function App() {
           </Col>
         </Row>
         <h6>Add addres</h6>
-        <p>{signerAddress}</p>
+        {/* <p>{signerAddress}</p> */}
         <Row>
           <InputGroup className="mt-2 mb-2">
             <Button
