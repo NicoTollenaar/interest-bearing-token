@@ -387,9 +387,17 @@ function App() {
   return (
     <>
       <Container>
-        <Row>
+        <Row className="d-flex justify-content-between">
           <Col md="auto">
             <h1>EURDC</h1>
+          </Col>
+
+          <Col
+            md="auto"
+            className="d-flex d-row inline justify-content-between mt-4"
+          >
+            <h6>Contract address:</h6>
+            <p>{contractAddress}</p>
           </Col>
           <Col md="auto">
             <Button
@@ -401,13 +409,8 @@ function App() {
               Connect MetaMask
             </Button>
           </Col>
-          <Col
-            md="auto"
-            className="d-flex d-row inline justify-content-between mt-4"
-          >
-            <h6>Contract address:</h6>
-            <p>{contractAddress}</p>
-          </Col>
+        </Row>
+        <Row className="d-flex justify-content-between">
           <Col md="auto" className="d-flex">
             <h6 className="mt-4 me-3">Network:</h6>
             <Form.Select
@@ -450,7 +453,7 @@ function App() {
               </Button>
               <FormControl
                 size="sm"
-                className="mt-3"
+                className="mt-3 change-rate-form"
                 aria-label="Example text with button addon"
                 aria-describedby="basic-addon1"
                 id="newRate"
@@ -459,7 +462,7 @@ function App() {
             </InputGroup>
           </Col>
         </Row>
-        <h6>Add addres</h6>
+        <h6 className="mt-3">Add addres</h6>
         {/* <p>{signerAddress}</p> */}
         <Row>
           <InputGroup className="mt-2 mb-2">
