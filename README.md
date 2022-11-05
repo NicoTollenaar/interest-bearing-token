@@ -2,7 +2,7 @@
 
 ERC20 token that bears interest compounding per second (using DSMath library)
 
-# to run demo:
+# To run app:
 
 1. Clone repo (default branch main)
 2. Change directory into project folder (`cd interest-bearing-token`)
