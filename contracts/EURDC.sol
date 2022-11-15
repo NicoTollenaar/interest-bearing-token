@@ -3,17 +3,19 @@ pragma solidity ^0.8.0;
 
 import "hardhat/console.sol";
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "./ERC20PublicBalances.sol";
+import "./ERC20Burnable.sol";
 import "../lib/DSMath.sol";
 
-contract EURDC is ERC20, ERC20Burnable, DSMath {
+contract EURDC is ERC20PublicBalances, ERC20Burnable, DSMath {
     uint public rateInRay;
     mapping(address => uint) public interest;
     mapping(address => uint) public lastTimestamp;
     address[] public tokenholders;
 
-    constructor(uint _rateInRay) ERC20("EURO Deposit Coin", "EURDC") {
+    constructor(uint _rateInRay)
+        ERC20PublicBalances("EURO Deposit Coin", "EURDC")
+    {
         rateInRay = _rateInRay;
     }
 
