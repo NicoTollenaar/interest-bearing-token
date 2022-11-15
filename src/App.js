@@ -134,6 +134,7 @@ function App() {
       chainId
     );
     setChainId(chainId);
+    window.location.reload();
   }
 
   function handleAccountsChange(accountsArray) {
@@ -298,7 +299,14 @@ function App() {
   async function handleChangeRate() {
     const newRate = document.getElementById("newRate").value;
     const newRateInRay = getRateInRayFormatted(newRate);
-    const signer = provider.getSigner();
+    const connectedMetaMaskAccount = window.ethereum.request({
+      method: "eth_accounts",
+    });
+    const signer = provider.getSigner(connectedMetaMaskAccount[0]);
+    console.log(
+      "In handleChangeRate, logging signer:",
+      await signer.getAddress()
+    );
     const tx = await EURDC.connect(signer).setInterestRate(newRateInRay, {
       gasLimit: 999999,
     });
