@@ -28,8 +28,8 @@ module.exports = {
     ganache: {
       url: "http://localhost:7545",
       accounts: [
-        `0x${process.env.GANANCHE_PRIVATE_KEY_ONE}`,
-        `0x${process.env.GANANCHE_PRIVATE_KEY_TWO}`,
+        `0x${process.env.GANACHE_PRIVATE_KEY_ONE}`,
+        `0x${process.env.GANACHE_PRIVATE_KEY_TWO}`,
       ],
     },
     rinkeby: {
