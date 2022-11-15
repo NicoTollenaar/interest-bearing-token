@@ -1,8 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
 require("dotenv").config();
 
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   const accounts = await hre.ethers.getSigners();
 
@@ -24,20 +22,6 @@ module.exports = {
     hardhat: {
       allowUnlimitedContractSize: true,
       blockGasLimit: 12450000,
-    },
-    ganache: {
-      url: "http://localhost:7545",
-      accounts: [
-        `0x${process.env.GANACHE_PRIVATE_KEY_ONE}`,
-        `0x${process.env.GANACHE_PRIVATE_KEY_TWO}`,
-      ],
-    },
-    rinkeby: {
-      url: `${process.env.ALCHEMY_RINKEBY_URL}`,
-      accounts: [
-        `0x${process.env.RINKEBY_PRIVATE_KEY_ONE}`,
-        `0x${process.env.RINKEBY_PRIVATE_KEY_TWO}`,
-      ],
     },
     goerli: {
       url: `${process.env.ALCHEMY_GOERLI_URL}`,
