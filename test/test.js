@@ -32,8 +32,8 @@ describe("Testing EURDC contract", function () {
   let tx, deployerAddress, EURDC, interest, issueTimestamp;
   before(async function () {
     try {
-      const Factory = await ethers.getContractFactory("EURDC");
-      EURDC = await Factory.deploy(rateInRayFormatted);
+      const Factory = await ethers.getContractFactory("ERC20InterestBearing");
+      EURDC = await Factory.deploy(rateInRayFormatted, "Deposit Token", "EUR-Bank");
       await EURDC.deployed();
       deployerAddress = EURDC.signer.address;
       tx = await EURDC.setInterestRate(rateInRayFormatted);
