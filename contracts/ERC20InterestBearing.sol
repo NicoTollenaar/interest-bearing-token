@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol"
 
 import "../lib/DSMath.sol";
 
-contract ERC20InterestBearing is ERC20PresetMinterPauser, DSMath {
+contract ERC20InterestBearing is ERC20PresetMinterPauser {
     uint public rateInRay;
     mapping(address => uint) public interest;
     mapping(address => uint) public lastTimestamp;
@@ -53,13 +53,22 @@ contract ERC20InterestBearing is ERC20PresetMinterPauser, DSMath {
         if (currentTimestamp < lastTimestamp[_tokenholder]) {
             timeLapsed = 0;
         } else {
-            timeLapsed = sub(currentTimestamp, lastTimestamp[_tokenholder]);
+            timeLapsed = DSMath.sub(
+                currentTimestamp,
+                lastTimestamp[_tokenholder]
+            );
         }
         uint principal = balanceOf(_tokenholder);
-        uint principalInRay = mul(principal, 10 ** 9);
-        uint interestFactor = rpow(rateInRay, timeLapsed);
-        uint principalPlusInterest = rmul(principalInRay, interestFactor);
-        interest[_tokenholder] = sub(principalPlusInterest, principalInRay);
+        uint principalInRay = DSMath.mul(principal, 10 ** 9);
+        uint interestFactor = DSMath.rpow(rateInRay, timeLapsed);
+        uint principalPlusInterest = DSMath.rmul(
+            principalInRay,
+            interestFactor
+        );
+        interest[_tokenholder] = DSMath.sub(
+            principalPlusInterest,
+            principalInRay
+        );
         return interest[_tokenholder];
     }
 
